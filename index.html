@@ -7,7 +7,7 @@
 </head>
 <body>
 
-	<h1>File Upload Demo</h1>
+	<!--<h1>File Upload Demo</h1>-->
     <!--<div class="k-files-container">
         <input type="file" class="k-file-input" id="k-file-input">
         <div class="k-file-fake-input">
@@ -35,12 +35,15 @@
         </div>
     </div>-->
     <form action="">
-        <input type="file" id="file-input">
+        <input type="file" id="file-input" multiple>
     </form>
     <script src="./node_modules/jquery/dist/jquery.min.js"></script>
     <script src="./dist/js/main.js"></script>
     <script>
-        $('#file-input').filer();
+        $('#file-input').filer({
+            url : 'http://testphp.com/',
+            done : ''
+        });
     </script>
 </body>
 </html>
