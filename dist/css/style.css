@@ -72,8 +72,8 @@ body {
 }
 
 .k-files .k-files-items .k-file-item-container .k-file-item-thumb > img {
-  max-width: auto;
-  max-height: 1005%;
+  max-width: 100%;
+  max-height: 100%;
 }
 
 .k-files .k-files-items .k-file-item-container .k-file-item-name {
