@@ -34,16 +34,24 @@
             </ul>
         </div>
     </div>-->
-    <form action="">
-        <input type="file" id="file-input" multiple>
+    <form action="http://testphp.com/" method="POST" enctype="multipart/form-data">
+        <input type="file" id="file-input" name="files[]" multiple>
+        <input type="submit" value="提交">
     </form>
     <script src="./node_modules/jquery/dist/jquery.min.js"></script>
-    <script src="./dist/js/main.js"></script>
+    <script src="./dist/js/kfiler.js"></script>
     <script>
+        // 初始化
         $('#file-input').filer({
             url : 'http://testphp.com/',
             limit : 3,
-            done : ''
+            done : function(res){
+                console.log(res);
+            },
+            error : function(err) {
+                console.log(err);
+            },
+            ajaxMode : true
         });
     </script>
 </body>
