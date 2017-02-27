@@ -20,11 +20,13 @@
             ,   doneCallback = SETTINGS.done
             ,   errorCallback = SETTINGS.error
             ,   ajaxMode = SETTINGS.ajaxMode
+            ,   enableProgress = SETTINGS.enableProgress
             // classes start
             ,   flContainer = classes.fileContainer
             ,   flItem = classes.fileItem
             ,   flThumb = classes.thumb
             ,   del = classes.delete
+            ,   progress = classes.progress
             // classes end
             ,   _this = $(this)
             ,   _form = _this.parents("form")
@@ -60,7 +62,6 @@
                     },
                     _handleFiles : function() {
                         var files = this.files
-                        ,   formData = new FormData
                         ,   self = this;
                         // 用于判断已选文件的个数
                         uuu._data._filesCount += files.length;
@@ -69,15 +70,17 @@
                             return;
                         }
                         $(files).each(function(i, ifile) {
+                            var formData = new FormData();
                             if (ifile) {
-                                formData.append('__files[]', ifile);
-                                uuu._selectedFilesMap(ifile);
+                                formData.append('__files', ifile);
+                                //遍历选择的文件并渲染
+                                uuu._selectedFilesMap(ifile, formData);
                             }
                         });
-                        // 判断是否为editMode,如果不是的话则用ajax上传，如果是的话则用form表单上传
-                        ajaxMode ? uuu._ajaxUploadFiles(formData) : uuu._formUploadFiles();     
+                        
+                        // ajaxMode ? uuu._ajaxUploadFiles(formData) : uuu._formUploadFiles();     
                     },
-                    _ajaxUploadFiles : function(data) {
+                    _ajaxUploadFiles : function(data, progress, del) {
                         // 用ajax实现文件的上传
                         $.ajax({
                             url : url,
@@ -98,7 +101,7 @@
                                        ,    total = e.total;
                                        if (e.lengthComputable) {
                                            percent = Math.ceil(pos / total * 100);
-                                           console.log(percent);
+                                           progress.find('.k-file-progress-inner').css("width",  percent + "%");
                                        }
                                     }, true);
                                 }
@@ -124,22 +127,30 @@
                     _formUploadFiles : function() {
 
                     },
-                    _selectedFilesMap : function(file) {
-                        var reader = new FileReader(),
-                            secFileTpl = "";
+                    _selectedFilesMap : function(file, formData) {
+                        var reader = new FileReader()
+                        ,   secFileTpl = "";
 
                         reader.readAsDataURL(file);
 
                         reader.onload = function(e) {
-                            var img = "<img src=" + e.target.result + " alt=" + file.name + ">",
-                                newItem = flItemTpl.replace(/\[\[thumb\]\]/, img).replace(/\[\[name\]\]/, file.name);
+                            var img = "<img src=" + e.target.result + " alt=" + file.name + ">"
+                            ,   newItem = $(flItemTpl.replace(/\[\[thumb\]\]/, img).replace(/\[\[name\]\]/, file.name))
+                            ,   $progress = null
+                            ,   $del = null;
+                            // console.log($(newItem));
                             $(append).append(newItem);
+                            // 根据ajaxMode判断是否显示删除按钮
+                            ajaxMode ? newItem.find(del).remove() : $del = newItem.find(del);
+                            // 是否有进度条
+                            !enableProgress ? newItem.find(progress).remove() : $progress = newItem.find(progress); 
+
+                            // $progress.css('background', 'red');
+                            // 判断是否为editMode,如果不是的话则用ajax上传，如果是的话则用form表单上传
+                            uuu._ajaxUploadFiles(formData, $progress, $del);
                         };
 
-                        // 根据ajaxMode判断是否显示删除按钮
-
-                        ajaxMode ? $(del).remove() : '';
-
+                        
                     }
                 };  
 
@@ -167,11 +178,12 @@
             fileButton : "#k-file-input",
             fileTpl : "<div class=\"k-files-container\"><div class=\"k-file-fake-input\"><div class=\"k-file-input-button\"></div><div class=\"k-files\"><ul class=\"k-files-items\"></ul></div></div></div>",
             append : ".k-files-items",
-            fileItem : "<li class=\"k-file-item\"><div class=\"k-file-item-container\"><div class=\"k-file-item-thumb\">[[thumb]]</div><div class=\"k-file-item-name\">[[name]]</div><a href=\"javascript:;\" class=\"k-file-delete\">X</a></div></li>",
+            fileItem : "<li class=\"k-file-item\"><div class=\"k-file-item-container\"><div class=\"k-file-item-thumb\">[[thumb]]</div><div class=\"k-file-item-name\">[[name]]</div><div class=\"k-file-progress-bar\"><div class=\"k-file-progress-inner\"></div></div><a href=\"javascript:;\" class=\"k-file-delete\">X</a></div></li>",
             buttonText : "选择文件",
             done : null,
             error : null,
             ajaxMode : true,
+            enableProgress : true,
             _classes : { 
                 container : ".k-files-container",
                 button : ".k-file-input-button",
@@ -179,7 +191,8 @@
                 fileItem : '.k-file-item',
                 thumb : '.k-file-item-thumb',
                 name : '.k-file-item-name',
-                delete : '.k-file-delete'
+                delete : '.k-file-delete',
+                progress : '.k-file-progress-bar'
             }
     };
 
