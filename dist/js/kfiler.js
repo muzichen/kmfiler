@@ -69,6 +69,7 @@
                             alert("最多只能上传" + limit + "个文件");
                             return;
                         }
+
                         $(files).each(function(i, ifile) {
                             var formData = new FormData();
                             if (ifile) {
