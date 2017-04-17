@@ -2,201 +2,276 @@
 
     "use strict";
 
+    function Filer(ele, options) {
+		this.$ele = $(ele);
+		this.options = $.extend(true, {}, $.fn.DEFAULT, options);
+		// 选择的文件，用于检测文件是否重复
+		this.selected = [];
+		this.init();
+	}
 
-    var Filer = function(options) {
+	Filer.prototype.init = function () {
+		
+		this.initMultiple();
 
-        var SETTINGS = $.extend({}, $.fn.filer.DEFAULTS, options);
+		this.bindEvents();
 
+	}
+	// 初始化是否允许多文件上传
+	Filer.prototype.initMultiple = function () {
+		var multiple = this.options.multiple,
+			$ele = this.$ele;
 
-        return this.each(function(index, ele) {
-            var tpl = SETTINGS.fileTpl
-            ,   btnText = SETTINGS.buttonText
-            ,   classes = SETTINGS._classes
-            ,   url = SETTINGS.url
-            ,   limit = SETTINGS.limit
-            ,   thumb = SETTINGS.thumb
-            ,   append = SETTINGS.append
-            ,   flItemTpl = SETTINGS.fileItem
-            ,   doneCallback = SETTINGS.done
-            ,   errorCallback = SETTINGS.error
-            ,   ajaxMode = SETTINGS.ajaxMode
-            ,   enableProgress = SETTINGS.enableProgress
-            // classes start
-            ,   flContainer = classes.fileContainer
-            ,   flItem = classes.fileItem
-            ,   flThumb = classes.thumb
-            ,   del = classes.delete
-            ,   progress = classes.progress
-            // classes end
-            ,   _this = $(this)
-            ,   _form = _this.parents("form")
-            ,   $form = _form.append(tpl)
-            ,   uuu = {
-                    init : function() {
-                        this._initTpl();
-                        this._initEvents();
-                    },
-                    _data : {
-                        _filesCount : 0,
-                    },
-                    // 初始化上传文件的按钮样式等
-                    _initTpl : function() {
-                        var $button = $(classes.button);
-                        btnText ? $button.html(btnText) : $button.html(" ");
-                    },
-                    // 初始化事件绑定
-                    _initEvents : function() {
-                        var self = this;
-                        _form
-                        .on('click', classes.button, function() {
-                            _this
-                                .trigger('click')
-                                .off('change')
-                                .on('change', function() {
-                                    self._handleFiles.call(this);
-                                });
-                        })
-                        .on('click', classes.delete, function() {
-                            alert('delete');
-                        });
-                    },
-                    _handleFiles : function() {
-                        var files = this.files
-                        ,   self = this;
-                        // 用于判断已选文件的个数
-                        uuu._data._filesCount += files.length;
-                        if (uuu._data._filesCount > limit) {
-                            alert("最多只能上传" + limit + "个文件");
-                            return;
-                        }
+		if (multiple && $ele.attr('multiple') === undefined) {
+			$ele.attr('multiple', 'multiple');
+			return;
+		}
 
-                        $(files).each(function(i, ifile) {
-                            var formData = new FormData();
-                            if (ifile) {
-                                formData.append('__files', ifile);
-                                //遍历选择的文件并渲染
-                                uuu._selectedFilesMap(ifile, formData);
-                            }
-                        });
-                        
-                        // ajaxMode ? uuu._ajaxUploadFiles(formData) : uuu._formUploadFiles();     
-                    },
-                    _ajaxUploadFiles : function(data, progress, del) {
-                        // 用ajax实现文件的上传
-                        $.ajax({
-                            url : url,
-                            type : 'POST',
-                            data : data,
-                            processData : false,
-                            contentType : false,
-                            mimeType:"multipart/form-data",
-                            xhr : function() {
-                                // 更新进度条
-                                // 这里上传文件是将选择的多个文件写在一个formdata中一块儿上传，需要修改为一个文件一个文件的单独上传
-                                var xhr = $.ajaxSettings.xhr();
-                                
-                                if (xhr.upload) {
-                                    xhr.upload.addEventListener("progress", function(e) {
-                                       var  percent = 0
-                                       ,    pos = e.loaded || e.position
-                                       ,    total = e.total;
-                                       if (e.lengthComputable) {
-                                           percent = Math.ceil(pos / total * 100);
-                                           progress.find('.k-file-progress-inner').css("width",  percent + "%");
-                                       }
-                                    }, true);
-                                }
-                                
-                                return xhr;
-                            },
-                            success : function(res) {
-                                if ($.isFunction(doneCallback)) {
-                                    doneCallback.call(null, res);
-                                } else {
-                                    console.log(res);
-                                }
-                            },
-                            error : function(err) {
-                                if ($.isFunction(errorCallback)) {
-                                    errorCallback.call(null, err);
-                                } else {
-                                    console.log(err);
-                                }
-                            }
-                        });
-                    },
-                    _formUploadFiles : function() {
+		if (!multiple && $ele.attr('multiple') === 'multiple') {
+			$ele.removeAttr('multiple');
+		}
 
-                    },
-                    _selectedFilesMap : function(file, formData) {
-                        var reader = new FileReader()
-                        ,   secFileTpl = "";
+	}
 
-                        reader.readAsDataURL(file);
+	Filer.prototype.bindEvents = function () {
 
-                        reader.onload = function(e) {
-                            var img = "<img src=" + e.target.result + " alt=" + file.name + ">"
-                            ,   newItem = $(flItemTpl.replace(/\[\[thumb\]\]/, img).replace(/\[\[name\]\]/, file.name))
-                            ,   $progress = null
-                            ,   $del = null;
-                            // console.log($(newItem));
-                            $(append).append(newItem);
-                            // 根据ajaxMode判断是否显示删除按钮
-                            ajaxMode ? newItem.find(del).remove() : $del = newItem.find(del);
-                            // 是否有进度条
-                            !enableProgress ? newItem.find(progress).remove() : $progress = newItem.find(progress); 
+		var $button = $(this.options.button),
+			$ele = this.$ele,
+			_this = this;
 
-                            // $progress.css('background', 'red');
-                            // 判断是否为editMode,如果不是的话则用ajax上传，如果是的话则用form表单上传
-                            uuu._ajaxUploadFiles(formData, $progress, $del);
-                        };
+		$button.on('click', function (e) {
+			$ele.trigger('click');
+			e.preventDefault();
+			return false;
+		});
 
-                        
-                    }
-                };  
+		$ele.on('change', function (e) {
+			_this.prepare(e.target.files);
+			_this.start(_this.selected);
+		});
+
+	}
+
+	Filer.prototype.prepare = function (files) {
+
+		var type = this.options.type.split('|'),
+			_this = this;
+
+		this.selected.oldLength = this.selected.length;
+		
+		// 检测文件是否重复
+
+		$.each(files, function(index, file) {
+						
+			if(!_this.checkDuplicate(file) && _this.checkType(file, type)) {
+
+				_this.selected.push(file);
+				
+			};
+
+		});
+
+	}
+
+	Filer.prototype.start = function (files) {
+
+		var $append = $(this.options.append),
+			itemTpl = this.options.tpl.item,
+			_this = this,
+			index;
+		
+
+		if (this.selected.oldLength) 
+			index = this.selected.oldLength;
+		
+		$.each(this.selected.slice(index), function (index, file) {
+				var $tpl = $(itemTpl);
+				// 使用dataUrl
+				if ( _this.options.dataUrl ) {
+					var reader = new FileReader();
+
+					reader.readAsDataURL(file);
+
+					reader.onload = function () {
+						$tpl.find('img').attr('src', reader.result);
+						$append.append($tpl);
+						_this.handleFileUpload(file, $tpl);
+					}
+
+					reader.onerror = function (error) {
+						throw new Error(error);
+					}
+					// 使用服务器图片
+				} else if ( !_this.options.dataUrl ) {
+					$append.append($tpl);
+					_this.handleFileUpload(file, $tpl);
+				}
+
+		});
+
+	}
+	// 文件上传
+	Filer.prototype.handleFileUpload = function (file, $tpl) {
+
+		var formData = new FormData(),
+			name = this.options.filename,
+			_this = this;
+		
+		if ($.isPlainObject(this.options.extraData)) {
+			$.each(this.options.extraData, function (name, value) {
+				formData.append(name, value);
+			});
+		}
+
+		formData.append(name, file);
+
+		$.ajax({
+			url: _this.options.url,
+			type: _this.options.method,
+			data: formData,
+			processData: false,
+			contentType: false,
+			success: function (data, textStatus, jqXHR) {
+				if ($.isFunction(_this.options.success)) {
+					_this.options.success(data, textStatus, jqXHR, $tpl);
+				}
+			},
+			error: function (jqXHR, textStatus, errorThrown) {
+				if ($.isFunction(_this.options.error)) {
+					_this.options.error(jqXHR, textStatus, errorThrown, $tpl);
+				}
+			},
+			complete: function (jqXHR, textStatus) {
+				if ($.isFunction(_this.options.complete)) {
+					_this.options.complete(jqXHR, textStatus, $tpl);
+				}
+			}
+		});
+
+		this.handleFileDelete($tpl);
 
 
-            if (!$(this).hasClass("k-file-input")) {
-                $(this).addClass("k-file-input");
-            }
+	}
+	/**
+	 * @todo 删除还有点问题
+	 */
+	Filer.prototype.handleFileDelete = function() {
+
+		var del = this.options._classes.delete,
+			item = this.options._classes.item,
+			_this = this;
+
+		$(item).find(del).on('click', function(e) {
+			
+
+			var $item = $(this).parents(item);
+			
+			if ($.isFunction(_this.options.delete)) {
+				_this.options.delete($item);
+			}
+			
+			
+			// $.ajax({
+			// 	url: delUrl,
+			// 	type: _this.options.method,
+			// 	data: itemDel,
+			// 	success: function (data, textStatus, jqXHR) {
+			// 		_this.options.success(data, textStatus, jqXHR, itemDel, 'delete');
+			// 	},
+			// 	error: function (jqXHR, textStatus, errorThrown) {
+			// 		_this.options.error(jqXHR, textStatus, errorThrown, itemDel, 'delete');
+			// 	},
+			// 	complete: function (jqXHR, textStatus) {
+			// 		_this.options.complete(jqXHR, textStatus, itemDel, 'delete');
+			// 	}
+			// });
+
+			e.stopPropagation();
+			return false;
+
+		});
 
 
-            uuu.init();
-            
+	}
+
+	// 检测文件类型
+	Filer.prototype.checkType = function (file, type) {
+
+		var status = null;
+
+		var ext = file.type.split('/').pop().toLowerCase();
+
+		if ($.inArray(ext, type) === -1) {
+			alert('文件类型错误!');
+			status = false;
+		} else {
+			status = true;
+		}
+
+		return status;
+
+	}
+
+	/**
+	 * 检测文件是否重复
+	 */
+
+	Filer.prototype.checkDuplicate = function(item) {
+
+		var duplicate = false;
+		
+		
+		$.each(this.selected, function(index, file) {
+			if (item.name === file.name) {
+				duplicate = true;
+				return false;
+			} 
+		});
+
+		return duplicate;
+
+	}
 
 
-        });
 
+	$.fn.kfiler = function (options) {
 
-    };
+		if (!$.isPlainObject(options)) {
+			throw new Error('参数错误');
+			return;
+		}
 
-    $.fn.filer = Filer;
+		return this.each(function () {
+			new Filer(this, options);
+		});
 
-    $.fn.filer.DEFAULTS = {
-            limit : 1,
-            url : '',
-            thumb : true,
-            fileButton : "#k-file-input",
-            fileTpl : "<div class=\"k-files-container\"><div class=\"k-file-fake-input\"><div class=\"k-file-input-button\"></div><div class=\"k-files\"><ul class=\"k-files-items\"></ul></div></div></div>",
-            append : ".k-files-items",
-            fileItem : "<li class=\"k-file-item\"><div class=\"k-file-item-container\"><div class=\"k-file-item-thumb\">[[thumb]]</div><div class=\"k-file-item-name\">[[name]]</div><div class=\"k-file-progress-bar\"><div class=\"k-file-progress-inner\"></div></div><a href=\"javascript:;\" class=\"k-file-delete\">X</a></div></li>",
-            buttonText : "选择文件",
-            done : null,
-            error : null,
-            ajaxMode : true,
-            enableProgress : true,
-            _classes : { 
-                container : ".k-files-container",
-                button : ".k-file-input-button",
-                fileContainer : ".k-files-items",
-                fileItem : '.k-file-item',
-                thumb : '.k-file-item-thumb',
-                name : '.k-file-item-name',
-                delete : '.k-file-delete',
-                progress : '.k-file-progress-bar'
-            }
-    };
+	}
 
+	$.fn.DEFAULT = {
+		url : '',
+		// delUrl : '',
+		button : '#js-fd-form-addimg',
+		multiple : true,
+		limits : 4,
+		type : 'jpg|png',
+		append : '.fd-form-images ul',
+		filename : 'images',
+		method : 'post',
+		dataUrl : false,
+		thumbnail : false,
+		tpl : {
+			item : ''
+		},
+		extraData: {
+			basePath : '/static/img.enhance.cn/ke/gaofen'
+		},
+		_classes : {
+			delete : '.fd-form-image-delete',
+			item: '.fd-form-image-item'
+		},
+		success: null,
+		delete: null
+	};
 
 
 }(window, document, jQuery))
